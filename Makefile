@@ -6,24 +6,23 @@
 #   - generate :: generate msp (peer, orderer)
 #   - clean :: cleans the docker container and msp folders
 
-#yongbric path
-YONGBRIC_PATH=$(shell printenv HOME)/fabric-hsm/hyperledger-fabric-hsm/yongbric
+PROJECT_PATH?=$(shell printenv HOME)/hyperledger-fabric-hsm
 
-PATH=$(shell printenv PATH):$(YONGBRIC_PATH)/bin
+PATH=$(shell printenv PATH):$(PROJECT_PATH)/bin
 
-FABRIC_CA_CLIENT_HOME=$(YONGBRIC_PATH)/client/admin
+FABRIC_CA_CLIENT_HOME=$(PROJECT_PATH)/client/admin
 FABRIC_CA_CLIENT_MSP=$(FABRIC_CA_CLIENT_HOME)/msp
 
-SOFTHSM_TOKEN=$(YONGBRIC_PATH)/softhsm/token/*
+SOFTHSM_TOKEN=$(PROJECT_PATH)/softhsm/tokens/*
 # hardcording in config.yaml file
 PEER_ORG=peerorg1
 ORDERER_ORG=ordererorg
 
-PEER_MSP_PATH=$(YONGBRIC_PATH)/crypto-config/peerOrganizations/$(PEER_ORG)
+PEER_MSP_PATH=$(PROJECT_PATH)/crypto-config/peerOrganizations/$(PEER_ORG)
 PEER_ADMIN_MSP_PATH=$(PEER_MSP_PATH)/users/$(ID)peeradmin
 PEER_USER_MSP_PATH=$(PEER_MSP_PATH)/users/$(ID)peeruser
 
-ORDERER_MSP_PATH=$(YONGBRIC_PATH)/crypto-config/ordererOrganizations/$(ORDERER_ORG)
+ORDERER_MSP_PATH=$(PROJECT_PATH)/crypto-config/ordererOrganizations/$(ORDERER_ORG)
 ORDERER_ADMIN_MSP_PATH=$(ORDERER_MSP_PATH)/users/$(ID)ordereradmin
 
 MSPS=orderer-admin peer-admin peer-user
@@ -43,9 +42,6 @@ HSM_SO_PIN_NUMBER?=1234
 ## user pin number
 HSM_USER_PIN_NUMBER?=98765432
 
-test:
-	@echo "test parameter $(ID)..."
-
 .PHONY: all
 all: softhsm fabric-start
 
@@ -59,9 +55,9 @@ generate-msp-not-ca: generate-orderer-admin generate-peer-admin generate-peer-us
 
 softhsm-env:
 	@echo "set softhsm env..."
-	@echo "directories.tokendir = $(HOME)/fabric-hsm/hyperledger-fabric-hsm/yongbric/softhsm/tokens/\nobjectstore.backend = file\nlog.level = ERROR\nslots.removable = false" > softhsm2.conf
+	@echo "directories.tokendir = $(PROJECT_PATH)/softhsm/tokens/\nobjectstore.backend = file\nlog.level = ERROR\nslots.removable = false" > softhsm2.conf
 	sudo mv -f softhsm2.conf /etc/.
-	mkdir -p {softhsm/lib,softhsm/tokens}
+	mkdir -p softhsm/tokens
 
 softhsm-show-slots:
 	@echo "softhsm show slots..."
@@ -101,6 +97,7 @@ generate-channel-transaction:
 
 ca-enroll: 
 	@echo "admin enroll.."
+	$(shell chmod +x bin/*)
 	@fabric-ca-client enroll -u http://admin:adminpw@localhost:7054 --home ./client/admin
 
 generate-orderer-admin: 		
@@ -212,7 +209,7 @@ chaincode-intall:
 	#@docker exec cli bash CORE_PEER_ADDRESS=peer0.org1.example.com:7051 CORE_PEER_LOCALMSPID=Org1MSP CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/$(PEER_ORG)/users/$(ID)peeradmin/msp peer chaincode install -n fabcar -p github.com/chaincode/fabcar/fabcar -v v0
 
 .PHONY: clean
-clean: clean-msp clean-container clean-fabric-config
+clean: clean-msp clean-container clean-fabric-config clean-softhsm
 
 .PHONY: clean-msp
 clean-msp:	

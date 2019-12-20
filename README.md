@@ -60,43 +60,34 @@ vim Docker
 ENV GODEBUG netdns=go
 ```
 
-## hyperledger fabric network compose
-### yongbric clone :)
-yongbric을 clone 받는다.
+## hyperledger fabric network start
+### 설치 환경 구성
+#### 1. git source clone
 ```
-1. git init fabric-hsm
-2. cd fabric-hsm
-3. git config core.sparseCheckout true
-4. git remote add -f origin https://github.com/yongtaelim/hyperledger-fabric-project.git
-5. echo "hyperledger-fabric-hsm/yongbric" >> .git/info/sparse-checkout
-6. git pull origin master
+git clone https://github.com/yongtaelim/hyperledger-fabric-hsm.git
 ```
+#### 2. softhsm을 사용하기 위한 환경 세팅
+```
+cd hyperledger-fabric-hsm/init/base/
+chmod +x package-install.sh
+./package-install.sh
+```
+package-install details
+>openssl
+>botan
+>gcc
+>libssl-dev
+>make
+>g++
+>protobuf
 
-### all
-make를 이용하여 아래의 항목을 실행한다.
+#### 3. softhsm 설치
 ```
-## ID argument 세팅
-make all ID=yong
+cd hyperledger-fabric-hsm/init/softhsm/
+chmod +x softhsm-install.sh
+./softhsm-install.sh
 ```
-description)
->ID : orderer, peer 계정 등록할 때 사용
->>orderer-admin : $(ID)ordereradmin / $(ID)ordereradminpw
->>peer-admin : $(ID)peeradmin / $(ID)peeradminpw
->>peer-user : $(ID)peeruser / $(ID)peeruserpw
-
-### softhsm2 설치
-#### 사전 작업
-1. openssl
-```
-apt update
-apt install openssl
-```
-2. botan 설치
-```
-apt update
-apt install botan
-```
-#### softhsm
+softhsm install detail
 1. download
 ```
 wget https://dist.opendnssec.org/source/softhsm-2.5.0.tar.gz
@@ -115,23 +106,16 @@ make
 
 make install
 ```
-5. check
-정상적으로 설치가 됐는지 체크한다. softhsm의 slot list를 불러온다.
-```
-softhsm2-util --show-slots
-```
-정상적으로 설치가 완료되었다면 아래의 경로에 관련 파일 및 폴더 생성
-```
-## so file
-/usr/local/lib/softhsm/libsofthsm2.so
-## token folder
-/var/lib/softhsm/tokens/
-## config file
-/etc/softhsm2.conf
 
-export SOFTHSM2_CONF="/etc/softhsm2.conf"
+#### 4. fabric start
+make로 softhsm, fabric start를 진행한다.
 ```
-6. init-token
+make
+```
+description)
+>softhsm 세팅 및 fabric 구성 실행
+##### init-token
+export SOFTHSM2_CONF="/etc/softhsm2.conf"
 hyperledger fabric에 필요한 token을 생성한다. ( hyperledger fabric document criteria )
 ```
 softhsm2-util --init-token --slot 0 --label "ForFabric" --so-pin 1234 --pin 98765432
@@ -142,9 +126,24 @@ description)
 >--so-pin :: 관리자 비밀번호  
 >--pin :: user 비밀번호
 
-### ca server start
+##### softhsm-show-slots 
+slot list를 조회한다.
+```
+softhsm2-util --show-slots
+```
+정상적으로 설치가 완료되었다면 아래의 경로에 관련 파일 및 폴더 생성
+```
+## so file
+./softhsm/libsofthsm2.so
+## token folder
+./softhsm/tokens/
+## config file
+./softhsm/softhsm2.conf
+```
+
+##### ca-start
 fabric ca server를 시작한다.
-1. docker-compose-ca.yaml
+###### docker-compose-ca.yaml
 ```
 fabric-ca-server:
    image: hyperledger/fabric-ca
@@ -163,7 +162,7 @@ fabric-ca-server:
      - ../softhsm/lib/libsofthsm2.so:/etc/hyperledger/fabric/libsofthsm2.so
    command: sh -c 'fabric-ca-server start -b admin:adminpw'
 ```
-2. fabric-ca-server-config.yaml
+###### fabric-ca-server-config.yaml
 ```
 bccsp:
     default: PKCS11
@@ -177,34 +176,34 @@ bccsp:
       # The directory used for the software file-based keystore
         keystore: msp/keystore
 ```
-3. docker container 실행
+###### docker container 실행
 ```
 docker-compose -f docker-compose-ca.yaml up -d
 ```
-### ca admin enroll
+##### ca-enroll
 fabric-ca-client를 이용하여 ca admin 계정을 enroll한다.
-### generate orderer admin enroll
+##### generate-orderer-admin
 1. fabric-ca-client를 이용하여 orderer admin 계정을 register한다.
 2. fabric-ca-client를 이용하여 orderer admin 계정을 enroll한다.
 3. msp폴더에서 admincert 폴더 생성
 4. signcerts 폴더 내 cert파일을 admincert 폴더 내로 복사
-### generate peer admin enroll
+##### generate-peer-admin
 1. fabric-ca-client를 이용하여 peer admin 계정을 register한다.
 2. fabric-ca-client를 이용하여 peer admin 계정을 enroll한다.
 3. msp폴더에서 admincert 폴더 생성
 4. signcerts 폴더 내 cert파일을 admincert 폴더 내로 복사
-### generate peer user enroll
+##### generate-peer-user
 1. fabric-ca-client를 이용하여 peer user 계정을 register한다.
 2. fabric-ca-client를 이용하여 peer user 계정을 enroll한다.
 3. msp폴더에서 admincert 폴더 생성
 4. peer admin msp signcerts 폴더 내 cert파일을 peer user msp admincert 폴더 내로 복사
-### create genesis.block
+##### create-genesis-block
 configtxgen 바이너리 파일을 이용하여 configtx.yaml 파일 기반 genesis.block 파일 생성
-### create channel.tx
+##### create-channel-transaction
 configtxgen 바이너리 파일을 이용하여 configtx.yaml 파일 기반 channel.tx 파일 생성
-### orderer node start
+##### orderer-start
 orderer node를 시작한다.
-1. docker-compose-orderer.yaml
+###### docker-compose-orderer.yaml
 ```
 services:
   orderer.example.com:
@@ -232,7 +231,7 @@ services:
         - ../softhsm/tokens/:/etc/hyperledger/fabric/softhsm/tokens
         - ../softhsm/lib/libsofthsm2.so:/etc/hyperledger/fabric/libsofthsm2.so
 ```
-2. orderer.yaml
+###### orderer.yaml
 ```
     BCCSP:
         # Default specifies the preferred blockchain crypto service provider
@@ -255,13 +254,13 @@ services:
                 KeyStore: msp/keystore
 
 ```
-3. docker container 실행
+###### docker container 실행
 ```
 docker-compose -f docker-compose-orderer.yaml up -d
 ```
-### peer node start
+##### peer-start
 peer node를 시작한다.
-1. docker-compose-peer.yaml
+###### docker-compose-peer.yaml
 ```
 services:
   peer0.org1.example.com:
@@ -314,7 +313,7 @@ services:
     ports:
       - 5984:5984
 ```
-2. core.yaml
+###### core.yaml
 ```
     BCCSP:
         Default: PKCS11
@@ -331,13 +330,13 @@ services:
             FileKeyStore:
                 KeyStore: msp/keystore
 ```
-3. docker container 실행
+###### docker container 실행
 ```
 docker-compose -f docker-compose-peer.yaml up -d
 ```
-### cli node start
+##### cli-start
 cli node를 시작한다.
-1. docker-compose-cli.yaml
+###### docker-compose-cli.yaml
 ```
 services:
   cli:
@@ -366,14 +365,14 @@ services:
         - ../softhsm/tokens/:/etc/hyperledger/fabric/softhsm/tokens
         - ../softhsm/lib/libsofthsm2.so:/etc/hyperledger/fabric/libsofthsm2.so          
 ```
-2. core.yaml, orderer.yaml
+###### core.yaml, orderer.yaml
 peer node start, orderer node start 와 동일
 
-3. docker container 실행
+###### docker container 실행
 ```
 docker-compose -f docker-compose-cli.yaml up -d
 ```
-### create channel
+##### channel-create
 channel.tx 파일을 이용하여 channel 생성
-### join channel
+##### channel-join
 channel.block 파일을 이용하여 peer를 channel에 가입
