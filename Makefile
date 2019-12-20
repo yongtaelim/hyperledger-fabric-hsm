@@ -20,7 +20,7 @@
 PROJECT_PATH?=$(shell printenv HOME)/hyperledger-fabric-hsm
 
 PATH=$(shell printenv PATH):$(PROJECT_PATH)/bin
-
+ 
 FABRIC_CA_CLIENT_HOME=$(PROJECT_PATH)/client/admin
 FABRIC_CA_CLIENT_MSP=$(FABRIC_CA_CLIENT_HOME)/msp
 

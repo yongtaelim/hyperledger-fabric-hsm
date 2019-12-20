@@ -379,4 +379,8 @@ docker-compose -f docker-compose-cli.yaml up -d
 ##### channel-create
 - channel.tx 파일을 이용하여 channel 생성
 ##### channel-join
+<<<<<<< HEAD
 - channel.block 파일을 이용하여 peer를 channel에 가입
+=======
+- channel.block 파일을 이용하여 peer를 channel에 가입
+>>>>>>> 1a39fe6b8426db81916f886de2e3f473def3d887
