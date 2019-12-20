@@ -1,0 +1,21 @@
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+fabric-ca-server:
+   image: hyperledger/fabric-ca
+   container_name: fabric-ca-server
+   ports:
+     - "7054:7054"
+   environment:
+     - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+     - FABRIC_CA_SERVER_DEBUG=true
+     - GODEBUG=netdns=go  
+     - SOFTHSM2_CONF=/etc/hyperledger/fabric/softhsm/config/softhsm2.conf  
+   volumes:
+     - ./ca:/etc/hyperledger/fabric-ca-server
+     - ../softhsm/config/softhsm2.conf:/etc/hyperledger/fabric/softhsm/config/softhsm2.conf
+     - ../softhsm/tokens/:/etc/hyperledger/fabric/softhsm/tokens
+     - ../softhsm/lib/libsofthsm2.so:/etc/hyperledger/fabric/libsofthsm2.so
+   command: sh -c 'fabric-ca-server start -b admin:adminpw'
