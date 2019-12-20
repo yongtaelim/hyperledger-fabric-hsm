@@ -1,5 +1,9 @@
-# hyperledger-fabric-hsm
-hyperledger fabric hsm 적용 테스트
+# Future
+- hyperledger fabric hsm 적용 binary
+- TLS Apply
+
+# Getting Started
+- hyperledger fabric hsm 적용 docker
 
 ## hyerperledger fabric node docker image 생성
 ### fabric-ca 
@@ -72,7 +76,7 @@ cd hyperledger-fabric-hsm/init/base/
 chmod +x package-install.sh
 ./package-install.sh
 ```
-package-install details
+##### package-install details
 >openssl
 >botan
 >gcc
@@ -87,7 +91,7 @@ cd hyperledger-fabric-hsm/init/softhsm/
 chmod +x softhsm-install.sh
 ./softhsm-install.sh
 ```
-softhsm install detail
+##### softhsm install detail
 1. download
 ```
 wget https://dist.opendnssec.org/source/softhsm-2.5.0.tar.gz
@@ -108,16 +112,16 @@ make install
 ```
 
 #### 4. fabric start
-make로 softhsm, fabric start를 진행한다.
+- make로 softhsm, fabric start를 진행한다.
 ```
 make
 ```
 description)
 >softhsm 세팅 및 fabric 구성 실행
 ##### init-token
-export SOFTHSM2_CONF="/etc/softhsm2.conf"
-hyperledger fabric에 필요한 token을 생성한다. ( hyperledger fabric document criteria )
+- hyperledger fabric에 필요한 token을 생성한다. ( hyperledger fabric document 기준 )
 ```
+export SOFTHSM2_CONF="/etc/softhsm2.conf"
 softhsm2-util --init-token --slot 0 --label "ForFabric" --so-pin 1234 --pin 98765432
 ```
 description)  
@@ -127,11 +131,11 @@ description)
 >--pin :: user 비밀번호
 
 ##### softhsm-show-slots 
-slot list를 조회한다.
+- slot list를 조회한다.
 ```
 softhsm2-util --show-slots
 ```
-정상적으로 설치가 완료되었다면 아래의 경로에 관련 파일 및 폴더 생성
+- 정상적으로 설치가 완료되었다면 아래의 경로에 관련 파일 및 폴더 생성
 ```
 ## so file
 ./softhsm/libsofthsm2.so
@@ -142,7 +146,7 @@ softhsm2-util --show-slots
 ```
 
 ##### ca-start
-fabric ca server를 시작한다.
+- fabric ca server를 시작한다.
 ###### docker-compose-ca.yaml
 ```
 fabric-ca-server:
@@ -181,7 +185,7 @@ bccsp:
 docker-compose -f docker-compose-ca.yaml up -d
 ```
 ##### ca-enroll
-fabric-ca-client를 이용하여 ca admin 계정을 enroll한다.
+- fabric-ca-client를 이용하여 ca admin 계정을 enroll한다.
 ##### generate-orderer-admin
 1. fabric-ca-client를 이용하여 orderer admin 계정을 register한다.
 2. fabric-ca-client를 이용하여 orderer admin 계정을 enroll한다.
@@ -198,11 +202,11 @@ fabric-ca-client를 이용하여 ca admin 계정을 enroll한다.
 3. msp폴더에서 admincert 폴더 생성
 4. peer admin msp signcerts 폴더 내 cert파일을 peer user msp admincert 폴더 내로 복사
 ##### create-genesis-block
-configtxgen 바이너리 파일을 이용하여 configtx.yaml 파일 기반 genesis.block 파일 생성
+- configtxgen 바이너리 파일을 이용하여 configtx.yaml 파일 기반 genesis.block 파일 생성
 ##### create-channel-transaction
-configtxgen 바이너리 파일을 이용하여 configtx.yaml 파일 기반 channel.tx 파일 생성
+- configtxgen 바이너리 파일을 이용하여 configtx.yaml 파일 기반 channel.tx 파일 생성
 ##### orderer-start
-orderer node를 시작한다.
+- orderer node를 시작한다.
 ###### docker-compose-orderer.yaml
 ```
 services:
@@ -259,7 +263,7 @@ services:
 docker-compose -f docker-compose-orderer.yaml up -d
 ```
 ##### peer-start
-peer node를 시작한다.
+- peer node를 시작한다.
 ###### docker-compose-peer.yaml
 ```
 services:
@@ -335,7 +339,7 @@ services:
 docker-compose -f docker-compose-peer.yaml up -d
 ```
 ##### cli-start
-cli node를 시작한다.
+- cli node를 시작한다.
 ###### docker-compose-cli.yaml
 ```
 services:
@@ -366,13 +370,13 @@ services:
         - ../softhsm/lib/libsofthsm2.so:/etc/hyperledger/fabric/libsofthsm2.so          
 ```
 ###### core.yaml, orderer.yaml
-peer node start, orderer node start 와 동일
+- peer node start, orderer node start 와 동일
 
 ###### docker container 실행
 ```
 docker-compose -f docker-compose-cli.yaml up -d
 ```
 ##### channel-create
-channel.tx 파일을 이용하여 channel 생성
+- channel.tx 파일을 이용하여 channel 생성
 ##### channel-join
-channel.block 파일을 이용하여 peer를 channel에 가입
+- channel.block 파일을 이용하여 peer를 channel에 가입
