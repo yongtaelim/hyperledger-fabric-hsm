@@ -1,10 +1,21 @@
 # help
 # This makefile defines the following targets
 #
-#   - all :: build to all execute files
-#   - ca-start :: fabric-ca container run
-#   - generate :: generate msp (peer, orderer)
-#   - clean :: cleans the docker container and msp folders
+#   - all(default) :: softhsm token initialize and fabric network start
+#   - softhsm :: softhsm token initialize
+#   - fabric-start :: hyperledger fabric network start
+#   - clean :: cleans docker container && msp && config
+#
+# This makefile parameter info.
+#     - PROJECT_PATH :: set this project path
+#     - ID :: peer and orderer register id
+#
+# this makefile hsm parameter info.
+#     - HSM_SLOT_NUMBER :: hsm slot number
+#     - HSM_LABLE_NAME :: hsm label name
+#     - HSM_SO_PIN_NUMBER :: hsm admin pin number
+#     - HSM_USER_PIN_NUMBER :: hsm user pin number
+
 
 PROJECT_PATH?=$(shell printenv HOME)/hyperledger-fabric-hsm
 
@@ -30,16 +41,11 @@ NODES=orderer peer cli
 CONFIGS=genesis-block channel-transaction
 CHANNEL_INVOCATIONS=create join
 
-## orderer, peer id
 ID?=test
-## softhsm token
-## initialize slot number
+
 HSM_SLOT_NUMBER?=0
-## label name
 HSM_LABLE_NAME?=ForFabric
-## so pin number
 HSM_SO_PIN_NUMBER?=1234
-## user pin number
 HSM_USER_PIN_NUMBER?=98765432
 
 .PHONY: all
