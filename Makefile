@@ -49,7 +49,7 @@ HSM_SO_PIN_NUMBER?=1234
 HSM_USER_PIN_NUMBER?=98765432
 
 .PHONY: all
-all: softhsm fabric-start
+all: clean softhsm fabric-start
 
 softhsm: softhsm-env softhsm-init-token softhsm-show-slots 
 
