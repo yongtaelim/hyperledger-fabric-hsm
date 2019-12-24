@@ -1,0 +1,25 @@
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+fabric-ca-tls-server:
+   image: hyperledger/fabric-ca
+   container_name: fabric-ca-tls-server
+   ports:
+     - "8054:7054"
+   environment:
+     - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+     - FABRIC_CA_SERVER_DEBUG=true
+     - GODEBUG=netdns=go  
+     - FABRIC_CA_SERVER_TLS_ENABLED=true     
+     - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/tlsca.org1.example.com-cert.pem
+     - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/729ce212c363f324abb320ca1406aa7e65ef5a121ae634103ef6e8d2d787a49b_sk
+     - FABRIC_CA_SERVER_PORT=7054
+   volumes:
+     - ./ca-tls:/etc/hyperledger/fabric-ca-server
+     - ../crypto-config/catlsOrganizations/tlsca/:/etc/hyperledger/fabric-ca-server-config
+     
+   command: sh -c 'fabric-ca-server start --ca.certfile /etc/hyperledger/fabric-ca-server-config/tlsca.org1.example.com-cert.pem --ca.keyfile /etc/hyperledger/fabric-ca-server-config/729ce212c363f324abb320ca1406aa7e65ef5a121ae634103ef6e8d2d787a49b_sk -b admin:adminpw -d'
+   
+    
