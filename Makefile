@@ -3,7 +3,8 @@
 #
 #   - all(default) :: softhsm token initialize and fabric network start
 #   - softhsm :: softhsm token initialize
-#   - fabric-start :: hyperledger fabric network start
+#   - fabric :: hyperledger fabric network start
+#	- fabric-tls :: hyperledger fabric with tls network start
 #   - clean :: cleans docker container && msp && config
 #
 # This makefile parameter info.
@@ -55,6 +56,9 @@ CA_TLS_ADMIN_MSP_PATH=$(CA_TLS_MSP_PATH)/tlsca
 
 MSPS=orderer-admin peer-admin peer-user
 NODES=orderer peer cli
+
+TLS_MSPS=orderertls-admin peertls-admin peertls-user
+TLS_NODES=orderertls peertls clitls
 CONFIGS=genesis-block channel-transaction
 CHANNEL_INVOCATIONS=create join
 
@@ -66,14 +70,13 @@ HSM_SO_PIN_NUMBER?=1234
 HSM_USER_PIN_NUMBER?=98765432
 
 .PHONY: all
-all: clean softhsm fabric-start
+all: clean softhsm fabric
 
 softhsm: softhsm-env softhsm-init-token softhsm-show-slots 
 
-fabric-start: ca-start ca-enroll $(patsubst %,generate-%,$(MSPS)) $(patsubst %,generate-%,$(CONFIGS)) $(patsubst %,%-start,$(NODES)) $(patsubst %,channel-%,$(CHANNEL_INVOCATIONS))
+fabric: ca-start ca-enroll $(patsubst %,generate-%,$(MSPS)) $(patsubst %,generate-%,$(CONFIGS)) $(patsubst %,%-start,$(NODES)) $(patsubst %,channel-%,$(CHANNEL_INVOCATIONS))
 
-#fabric-tls-start: catls-start catls-enroll generate-orderertls-admin ca-tls-start ca-tls-enroll generate-orderer-tls-admin
-fabric-tls-start: catls-start catls-enroll generate-orderertls-admin generate-peertls-admin generate-peertls-user ca-tls-start ca-tls-enroll generate-orderer-tls-admin generate-peer-tls-admin
+fabric-tls: catls-start catls-enroll $(patsubst %,generate-%,$(TLS_MSPS)) ca-tls-start ca-tls-enroll generate-orderer-tls-admin generate-peer-tls-admin $(patsubst %,generate-%,$(CONFIGS)) $(patsubst %,%-start,$(TLS_NODES)) $(patsubst %,tls-channel-%,$(CHANNEL_INVOCATIONS))
 
 softhsm-env:
 	@echo "set softhsm env..."
@@ -89,42 +92,14 @@ softhsm-init-token:
 	@echo "softhsm init token..."
 	@softhsm2-util --init-token --slot $(HSM_SLOT_NUMBER) --label $(HSM_LABLE_NAME) --so-pin $(HSM_SO_PIN_NUMBER) --pin $(HSM_USER_PIN_NUMBER)
 
-ca-start:
-	@echo "fabric ca server start..."
-	@docker-compose -f docker/docker-compose-ca.yml up -d
-	@echo "fabric ca server wait run time..."
+bin-init:
+	$(shell chmod +x bin/*)
+
+%-start:
+	@echo "fabric $(patsubst %-start,%,${@}) server start..."
+	docker-compose -f docker/docker-compose-$(patsubst %-start,%,${@}).yml up -d
+	@echo "fabric $(patsubst %-start,%,${@}) server wait run time..."
 	sleep 2
-
-catls-start:	
-	@echo "fabric ca(tls) server start..."
-	@docker-compose -f docker/docker-compose-catls.yml up -d
-	@echo "fabric ca(tls) server wait run time..."
-	sleep 2
-
-## 안씀
-ca-root-start:
-	@echo "fabric ca root server start..."
-	@docker-compose -f docker/docker-compose-ca-root.yml up -d
-	@echo "fabric ca root server wait run time..."
-	sleep 2	
-
-ca-tls-start:
-	@echo "fabric ca tls server start..."
-	@docker-compose -f docker/docker-compose-ca-tls.yml up -d
-	@echo "fabric ca tls server wait run time..."
-	sleep 2		
-
-orderer-start:
-	@echo "fabric orderer start..."
-	@docker-compose -f docker/docker-compose-orderer.yml up -d
-
-peer-start:
-	@echo "fabric peer start.."
-	@docker-compose -f docker/docker-compose-peer.yml up -d		
-
-cli-start:
-	@echo "fabric-cli start.."
-	@docker-compose -f docker/docker-compose-cli.yml up -d		
 
 generate-genesis-block:
 	@echo "generate geneis block.."
@@ -136,59 +111,24 @@ generate-channel-transaction:
 	@mkdir -p config
 	@configtxgen -profile OneOrgChannel -outputCreateChannelTx ./config/channel.tx -channelID yongchannel
 
-ca-enroll: 
-	@echo "admin enroll.."
-	$(shell chmod +x bin/*)
+ca-enroll: bin-init
+	@echo "admin enroll.."	
 	@fabric-ca-client enroll -u http://admin:adminpw@localhost:7054 --home ./client/admin
 
-## 안씀
-ca-root-enroll: 
-	@echo "root admin enroll.."
-	$(shell chmod +x bin/*)
-	@fabric-ca-client enroll -u http://admin:adminpw@localhost:9054 --home ./client/root/admin	
-
-ca-tls-enroll: 
+ca-tls-enroll: bin-init
 	@echo "ca tls admin enroll.."
-	$(shell chmod +x bin/*)
 	fabric-ca-client enroll \
 				-u https://admin:adminpw@$(TLS_CA_DOMAIN) \
 				--enrollment.profile tls \
 				--tls.certfiles $(CA_TLS_MSP_PATH)/tlsca/tlsca.org1.example.com-cert.pem \
 				--home ./client/tls/admin		
 
-catls-enroll: 
+catls-enroll: bin-init
 	@echo "ca(tls) admin enroll.."
-	$(shell chmod +x bin/*)
 	fabric-ca-client enroll \
 				-u https://admin:adminpw@$(CATLS_DOMAIN) \
 				--tls.certfiles $(CA_TLS_MSP_PATH)/ca/ca.org1.example.com-cert.pem \
 				--home ./client/admin						
-
-##안씀
-generate-ca-tls-admin:
-	@echo "ca tls admin register.."
-	@fabric-ca-client register \
-			--id.name $(ID)tlsadmin \
-			--id.secret $(ID)tlsadminpw \
-			--id.type client \
-			--id.affiliation tlscaorg \
-			--id.attrs '"hf.Registrar.Roles=client,orderer,peer,user"' \
-			--id.attrs '"hf.Registrar.DelegateRoles=client,orderer,peer,user"' \
-			--id.attrs hf.Registrar.Attributes="*" \
-			--id.attrs hf.GenCRL=true \
-			--id.attrs hf.Revoker=true \
-			--id.attrs hf.AffiliationMgr=true \
-			--id.attrs hf.IntermediateCA=true \
-			--id.attrs admin=true:ecert \
-			--home $(FABRIC_CA_CLIENT_ROOT_HOME)
-
-	@echo "ca tls admin enroll.."
-	@fabric-ca-client enroll \
-			-u http://$(ID)tlsadmin:$(ID)tlsadminpw@localhost:9054 \
-			-M $(CA_TLS_ADMIN_MSP_PATH)/msp \
-			--home $(FABRIC_CA_CLIENT_ROOT_HOME)
-
-	mv $(CA_TLS_ADMIN_MSP_PATH)/msp/keystore/* $(CA_TLS_ADMIN_MSP_PATH)/msp/keystore/server_sk
 
 generate-orderertls-admin:
 	@echo "orderer admin register.."
@@ -293,7 +233,7 @@ generate-peertls-user:
 	@echo cp $(PEER_ADMIN_MSP_PATH)/msp/signcerts/cert.pem $(PEER_USER_MSP_PATH)/admincerts/.
 	@cp $(PEER_ADMIN_MSP_PATH)/msp/signcerts/cert.pem $(PEER_USER_MSP_PATH)/admincerts/.
 
-generate-orderer-tls-admin: 		
+generate-orderer-tls-admin: 		 
 	@echo "orderer tls admin register.."
 	fabric-ca-client register \
 			-u https://$(TLS_CA_DOMAIN) \
@@ -305,39 +245,39 @@ generate-orderer-tls-admin:
 			--home $(FABRIC_CA_CLIENT_TLS_HOME)
 
 	@echo "orderer tls admin enroll.."
-	fabric-ca-client enroll \
-			-u https://$(ID)ordereradmintls:$(ID)ordereradmintlspw@$(TLS_CA_DOMAIN) \
-			-m orderer.example.com \
-			--enrollment.profile tls \
-			--tls.certfiles $(CA_TLS_MSP_PATH)/tlsca/tlsca.org1.example.com-cert.pem \
-			-M $(ORDERER_ADMIN_TLS_MSP_PATH) \
+	fabric-ca-client enroll\
+			-u https://$(ID)ordereradmintls:$(ID)ordereradmintlspw@$(TLS_CA_DOMAIN)\
+			-m orderer.example.com\
+			--enrollment.profile tls\
+			--tls.certfiles $(CA_TLS_MSP_PATH)/tlsca/tlsca.org1.example.com-cert.pem\
+			-M $(ORDERER_ADMIN_TLS_MSP_PATH)\
 			--home $(FABRIC_CA_CLIENT_TLS_HOME)
 
 	@echo "create orderer admin tls.."
 	@mkdir -p $(ORDERER_MSP_PATH)/tls
 
-	@cp $(ORDERER_MSP_PATH)/tlsca/keystore/* $(ORDERER_MSP_PATH)/tls/server.key
-	@cp $(ORDERER_MSP_PATH)/tlsca/signcerts/* $(ORDERER_MSP_PATH)/tls/server.crt
-	@cp $(ORDERER_MSP_PATH)/tlsca/tlscacerts/* $(ORDERER_MSP_PATH)/tls/ca.crt
+	cp $(ORDERER_MSP_PATH)/tlsca/keystore/* $(ORDERER_MSP_PATH)/tls/server.key
+	cp $(ORDERER_MSP_PATH)/tlsca/signcerts/* $(ORDERER_MSP_PATH)/tls/server.crt
+	cp $(ORDERER_MSP_PATH)/tlsca/tlscacerts/* $(ORDERER_MSP_PATH)/tls/ca.crt
 
 generate-peer-tls-admin: 		
 	@echo "peer tls admin register.."
-	fabric-ca-client register \
-			-u https://$(TLS_CA_DOMAIN) \
-			--tls.certfiles $(CA_TLS_MSP_PATH)/tlsca/tlsca.org1.example.com-cert.pem \
-			--id.name $(ID)peeradmintls \
-			--id.secret $(ID)peeradmintlspw \
-			--id.type peer \
-			--id.affiliation peerorg1 \
+	fabric-ca-client register\
+			-u https://$(TLS_CA_DOMAIN)\
+			--tls.certfiles $(CA_TLS_MSP_PATH)/tlsca/tlsca.org1.example.com-cert.pem\
+			--id.name $(ID)peeradmintls\
+			--id.secret $(ID)peeradmintlspw\
+			--id.type peer\
+			--id.affiliation peerorg1\
 			--home $(FABRIC_CA_CLIENT_TLS_HOME)
 
 	@echo "peer tls admin enroll.."
-	fabric-ca-client enroll \
-			-u https://$(ID)peeradmintls:$(ID)peeradmintlspw@$(TLS_CA_DOMAIN) \
-			-m peer0.org1.example.com \
-			--enrollment.profile tls \
-			--tls.certfiles $(CA_TLS_MSP_PATH)/tlsca/tlsca.org1.example.com-cert.pem \
-			-M $(PEER_ADMIN_TLS_MSP_PATH) \
+	fabric-ca-client enroll\
+			-u https://$(ID)peeradmintls:$(ID)peeradmintlspw@$(TLS_CA_DOMAIN)\
+			--csr.hosts ['peer0.org1.example.com']\
+			--enrollment.profile tls\
+			--tls.certfiles $(CA_TLS_MSP_PATH)/tlsca/tlsca.org1.example.com-cert.pem\
+			-M $(PEER_ADMIN_TLS_MSP_PATH)\
 			--home $(FABRIC_CA_CLIENT_TLS_HOME)
 
 	@echo "create peer admin tls.."
@@ -446,14 +386,34 @@ channel-create:
 	@echo "create the channel.."
 	@docker exec peer0.org1.example.com peer channel create -o orderer.example.com:7050 -c yongchannel -f /etc/hyperledger/configtx/channel.tx
 
+tls-channel-create:
+	@echo "create the channel.."
+	docker exec -e "CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/peerorg1/users/$(ID)peeradmin/msp" \
+		cli \
+		peer channel create \
+						-o orderer.example.com:7050 \
+						-c yongchannel \
+						-f /opt/gopath/src/github.com/hyperledger/fabric/peer/config/channel.tx \
+						--tls \
+						--cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/ordererorg/tls/ca.crt
+						
 channel-join:
 	@echo "join peer to the channel.."
 	@docker exec peer0.org1.example.com peer channel join -b yongchannel.block
 
+tls-channel-join:
+	@echo "join peer to the channel.."
+	docker exec \
+		cli \
+		peer channel join \
+						-b yongchannel.block \
+						--tls \
+						--cafile $$CORE_PEER_TLS_ROOTCERT_FILE \
+						--certfile $$CORE_PEER_TLS_CERT_FILE
+
 chaincode-intall:
 	@echo "chaincode install.."
 	@docker exec cli bash CORE_PEER_ADDRESS=peer0.org1.example.com:7051 CORE_PEER_LOCALMSPID=Org1MSP CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/$(PEER_ORG)/users/$(ID)peeradmin/msp peer chaincode install -n fabcar -p github.com/chaincode/fabcar -v v0
-	#@docker exec cli bash CORE_PEER_ADDRESS=peer0.org1.example.com:7051 CORE_PEER_LOCALMSPID=Org1MSP CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/$(PEER_ORG)/users/$(ID)peeradmin/msp peer chaincode install -n fabcar -p github.com/chaincode/fabcar/fabcar -v v0
 
 .PHONY: clean
 clean: clean-msp clean-container clean-fabric-config clean-softhsm
@@ -463,7 +423,6 @@ clean-msp:
 	@echo "clean the msp.."
 	-sudo rm -rf $(PEER_MSP_PATH) 
 	-sudo rm -rf $(ORDERER_MSP_PATH)
-	#-sudo rm -rf $(CA_TLS_MSP_PATH)
 	-sudo rm -rf $(FABRIC_CA_CLIENT_MSP)
 	-sudo rm -rf $(FABRIC_CA_CLIENT_ROOT_MSP)
 	-sudo rm -rf $(FABRIC_CA_CLIENT_TLS_MSP)
@@ -478,7 +437,7 @@ clean-softhsm:
 .PHONY: clean-container
 clean-container:
 	@echo "clean the container.."
-	-docker rm -f fabric-ca-server fabric-ca-tls-server fabric-ca-root-server orderer.example.com peer0.org1.example.com cli couchdb
+	-docker rm -f ca.org1.example.com tlsca.org1.example.com fabric-ca-root-server orderer.example.com peer0.org1.example.com cli couchdb
 
 .PHONY: clean-fabric-config
 clean-fabric-config:

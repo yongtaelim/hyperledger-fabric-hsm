@@ -99,7 +99,7 @@ tls:
 #
 #############################################################################
 csr:
-  cn: admin
+  cn: orderer.example.com
   keyrequest:
     algo: ecdsa
     size: 256
@@ -111,7 +111,7 @@ csr:
       O: Hyperledger
       OU: Fabric
   hosts:
-    - HLF-dev-03
+    - orderer.example.com
 
 #############################################################################
 #  Registration section used to register a new identity with fabric-ca server

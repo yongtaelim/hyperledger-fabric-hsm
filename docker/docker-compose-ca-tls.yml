@@ -3,9 +3,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-fabric-ca-tls-server:
+tlsca.org1.example.com:
    image: hyperledger/fabric-ca
-   container_name: fabric-ca-tls-server
+   container_name: tlsca.org1.example.com
    ports:
      - "8054:7054"
    environment:
