@@ -86,7 +86,7 @@ chmod +x package-install.sh
 >protobuf
 
 ##### /etc/hosts 파일 수정
->127.0.0.1  ca.org1.example.com
+>127.0.0.1  ca.org1.example.com  
 >127.0.0.1  tlsca.org1.example.com
 
 #### 3. softhsm 설치
